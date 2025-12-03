@@ -2,228 +2,334 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>極速條碼掃描器 (EAN專用)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EAN-13 條碼盤點掃描器</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
             background-color: #f0f2f5;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        .header {
-            background: #fff;
-            padding: 15px;
             text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            z-index: 10;
         }
-        h2 { margin: 0; font-size: 1.2rem; color: #333; }
-        .status { font-size: 0.9rem; color: #28a745; margin-top: 5px; }
+        h2 { color: #333; }
+        #controls { margin-bottom: 15px; }
+        button {
+            padding: 12px 20px;
+            margin: 5px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        #btn-start { background-color: #28a745; } /* 綠色 */
+        #btn-pause { background-color: #ffc107; color: black; display: none; } /* 黃色 */
+        #btn-complete { background-color: #dc3545; display: none; } /* 紅色 */
         
-        /* 掃描視窗容器 */
-        #scanner-container {
-            position: relative;
-            flex: 1;
-            background: #000;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        /* 影片元素 */
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* 讓畫面填滿 */
-        }
+        button:active { opacity: 0.8; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
 
-        /* 掃描框框 (視覺引導) */
-        .scan-region {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            height: 250px;
-            border: 2px solid rgba(255, 255, 255, 0.6);
+        #reader-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 20px auto;
             border-radius: 10px;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /*以此模擬遮罩*/
-            z-index: 5;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: #000;
         }
-        .scan-region::after {
-            content: "請將條碼置於此框內";
-            position: absolute;
-            bottom: -30px;
-            left: 0;
+        /* 設定鏡頭區域高度，避免畫面跳動 */
+        #reader {
             width: 100%;
-            text-align: center;
-            color: #fff;
-            font-size: 0.9rem;
+            min-height: 300px; 
         }
 
-        /* 掃描結果列表 */
-        .result-panel {
-            background: #fff;
-            padding: 15px;
-            height: 150px;
-            overflow-y: auto;
-            border-top: 1px solid #ddd;
+        #result-section {
+            display: none; /* 初始隱藏 */
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: auto;
         }
-        .result-item {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
+
+        #scan-list {
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+            padding: 10px;
+        }
+        .scan-item {
             display: flex;
             justify-content: space-between;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 5px 0;
         }
-        
-        /* 綠色偵測框 (Quagga 自動繪製) */
-        .drawingBuffer {
-            position: absolute;
-            top: 0;
-            left: 0;
+        .scan-item:last-child { border-bottom: none; }
+        .item-code { font-family: monospace; font-weight: bold; }
+        .item-qty { color: #28a745; font-weight: bold; }
+
+        #download-controls {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed #ccc;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 70%;
+            margin-bottom: 10px;
+        }
+        #btn-download {
+            background-color: #007bff; /* 藍色 */
             width: 100%;
-            height: 100%;
-            z-index: 4;
+        }
+
+        /* 狀態提示 */
+        #status-msg {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #666;
+            min-height: 1.2em;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>極速條碼掃描 (服飾標籤專用)</h2>
-        <div class="status" id="status-text">相機準備中...</div>
+    <h2>EAN-13 條碼盤點</h2>
+
+    <div id="status-msg">準備就緒，請點擊「開始掃描」</div>
+
+    <div id="controls">
+        <button id="btn-start">開始掃描</button>
+        <button id="btn-pause">暫停</button>
+        <button id="btn-complete">完成</button>
     </div>
 
-    <div id="scanner-container">
-        <div class="scan-region"></div>
-        </div>
+    <div id="reader-container">
+        <div id="reader"></div>
+    </div>
 
-    <div class="result-panel" id="result-list">
-        <div style="color: #888; text-align: center; margin-top: 10px;">
-            掃描結果將顯示於此
+    <div id="result-section">
+        <h3>已掃描清單</h3>
+        <div id="scan-list"></div>
+
+        <div id="download-controls">
+            <p>請輸入檔案名稱：</p>
+            <input type="text" id="filename-input" value="盤點結果" placeholder="輸入檔名">
+            <span>.xlsx</span>
+            <br>
+            <button id="btn-download">下載 Excel 報表</button>
         </div>
     </div>
 
+    <audio id="beep-sound" src="beep.mp3" preload="auto"></audio>
+    
     <script>
-        // 聲音提示
-        const beepSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU'); // 簡單的 Beep 聲佔位符，建議換成真實音效路徑
+        // === 變數初始化 ===
+        let html5QrcodeScanner;
+        let isScanning = false;
+        let isPaused = false;
+        // 儲存掃描數據：Key是條碼，Value是數量
+        let scannedData = new Map(); 
+        
+        // 防重複掃描設定
+        let lastScannedCode = null;
+        let lastScannedTime = 0;
+        const DEBOUNCE_TIME_MS = 2000; // 2秒
 
-        let lastCode = "";
-        let lastTime = 0;
+        // DOM 元素
+        const btnStart = document.getElementById('btn-start');
+        const btnPause = document.getElementById('btn-pause');
+        const btnComplete = document.getElementById('btn-complete');
+        const btnDownload = document.getElementById('btn-download');
+        const resultSection = document.getElementById('result-section');
+        const scanList = document.getElementById('scan-list');
+        const statusMsg = document.getElementById('status-msg');
+        const beepSound = document.getElementById('beep-sound');
 
-        function startScanner() {
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#scanner-container'),
-                    constraints: {
-                        width: 640,   // 【優化1】降低解析度以提升FPS
-                        height: 480,
-                        facingMode: "environment" // 使用後鏡頭
-                    }
-                },
-                locator: {
-                    patchSize: "medium", // 【優化2】掃描框大小
-                    halfSample: true     // 【優化3】關鍵！只處理一半像素，速度大增
-                },
-                numOfWorkers: 4,         // 【優化4】使用多核心運算
-                decoder: {
-                    // 【優化5】只開啟 EAN (一般商品) 和 Code 128 (物流)，關閉其他不用的解碼器
-                    readers: ["ean_reader", "code_128_reader"] 
-                },
-                locate: true // 顯示綠色追蹤框
-            }, function(err) {
-                if (err) {
-                    console.log(err);
-                    document.getElementById('status-text').innerText = "相機啟動失敗：" + err;
-                    document.getElementById('status-text').style.color = "red";
-                    return;
-                }
-                console.log("Initialization finished. Ready to start");
-                document.getElementById('status-text').innerText = "正在掃描中... (請對準條碼)";
-                Quagga.start();
-            });
+        // === 核心功能：處理掃描成功 ===
+        function onScanSuccess(decodedText, decodedResult) {
+            const currentTime = new Date().getTime();
 
-            // 偵測處理 (畫出綠色框框)
-            Quagga.onProcessed(function(result) {
-                var drawingCtx = Quagga.canvas.ctx.overlay,
-                    drawingCanvas = Quagga.canvas.dom.overlay;
+            // **核心邏輯：防止 2 秒內重複誤掃**
+            if (decodedText === lastScannedCode && (currentTime - lastScannedTime < DEBOUNCE_TIME_MS)) {
+                // 如果條碼相同且時間小於2秒，忽略這次掃描
+                console.log("已忽略重複掃描: " + decodedText);
+                return;
+            }
 
-                if (result) {
-                    if (result.boxes) {
-                        drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
-                        result.boxes.filter(function (box) {
-                            return box !== result.box;
-                        }).forEach(function (box) {
-                            Quagga.ImageDebug.drawPath(box, {x: 0, y: 1}, drawingCtx, {color: "green", lineWidth: 2});
-                        });
-                    }
+            // 更新最後掃描狀態
+            lastScannedCode = decodedText;
+            lastScannedTime = currentTime;
 
-                    if (result.box) {
-                        Quagga.ImageDebug.drawPath(result.box, {x: 0, y: 1}, drawingCtx, {color: "#00F", lineWidth: 2});
-                    }
+            // **核心邏輯：自動計數**
+            // 檢查 Map 中是否已有此條碼，有則+1，無則設為1
+            let currentQty = scannedData.get(decodedText) || 0;
+            scannedData.set(decodedText, currentQty + 1);
 
-                    if (result.codeResult && result.codeResult.code) {
-                        Quagga.ImageDebug.drawPath(result.line, {x: 'x', y: 'y'}, drawingCtx, {color: 'red', lineWidth: 3});
-                    }
-                }
-            });
+            // **核心邏輯：音效回饋**
+            // 嘗試播放音效 (需要用戶先與頁面互動過才能播放)
+            beepSound.play().catch(e => console.log("音效播放失敗(可能是瀏覽器限制):", e));
 
-            // 掃描成功回調
-            Quagga.onDetected(function(result) {
-                var code = result.codeResult.code;
-                var now = new Date().getTime();
-
-                // 防止短時間內重複掃描同一條碼 (1秒冷卻)
-                if (code === lastCode && now - lastTime < 1000) {
-                    return;
-                }
-
-                lastCode = code;
-                lastTime = now;
-                
-                // 播放聲音 (如果有的話)
-                // beepSound.play().catch(e => console.log(e));
-
-                // 顯示結果
-                addResult(code, result.codeResult.format);
-                
-                // 視覺回饋：閃爍一下
-                document.querySelector('.scan-region').style.borderColor = "#00ff00";
-                setTimeout(() => {
-                    document.querySelector('.scan-region').style.borderColor = "rgba(255, 255, 255, 0.6)";
-                }, 300);
-            });
+            updateUIStatus(`掃描成功: ${decodedText}`, "green");
+            renderScanList();
         }
 
-        function addResult(code, format) {
-            const list = document.getElementById('result-list');
-            // 清除預設文字
-            if(list.innerText.includes('掃描結果將顯示於此')) list.innerHTML = '';
-
-            const item = document.createElement('div');
-            item.className = 'result-item';
-            
-            const time = new Date().toLocaleTimeString();
-            item.innerHTML = `
-                <div>
-                    <strong>${code}</strong> <br>
-                    <small style="color:#666">${format}</small>
-                </div>
-                <div style="color:#888; font-size:0.8rem; align-self:center;">${time}</div>
-            `;
-            
-            list.insertBefore(item, list.firstChild);
+        function onScanFailure(error) {
+            // 掃描失敗很常見（例如沒對準時），通常不需要特別處理，避免刷屏 console
+            // console.warn(`Code scan error = ${error}`);
         }
 
-        // 啟動
-        startScanner();
+        // === 介面與流程控制 ===
+
+        // 開始掃描按鈕
+        btnStart.addEventListener('click', () => {
+            // 播放一次聲音以解鎖移動端瀏覽器的音頻限制
+            beepSound.play().then(() => beepSound.pause()).catch(()=>{});
+
+            if (!html5QrcodeScanner) {
+                // 初始化掃描器實例
+                html5QrcodeScanner = new Html5Qrcode("reader");
+            }
+
+            if (isPaused) {
+                // 如果是暫停狀態，則恢復
+                html5QrcodeScanner.resume();
+                isPaused = false;
+                updateButtonsState("scanning");
+                updateUIStatus("繼續掃描中...", "blue");
+            } else {
+                // 全新開始
+                const config = { 
+                    fps: 10, // 每秒幀數，越高越耗能但反應越快
+                    qrbox: { width: 250, height: 150 }, // 掃描框大小，長方形適合條碼
+                    // 重要：指定只掃描 EAN-13，提高效能和準確度
+                    formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13 ] 
+                };
+                
+                // 使用後置鏡頭 (environment)
+                html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+                .then(() => {
+                    isScanning = true;
+                    updateButtonsState("scanning");
+                    updateUIStatus("正在掃描...", "blue");
+                    resultSection.style.display = "block"; // 顯示結果區
+                })
+                .catch((err) => {
+                    updateUIStatus("無法啟動鏡頭: " + err, "red");
+                });
+            }
+        });
+
+        // 暫停按鈕
+        btnPause.addEventListener('click', () => {
+            if (html5QrcodeScanner && isScanning && !isPaused) {
+                html5QrcodeScanner.pause();
+                isPaused = true;
+                updateButtonsState("paused");
+                updateUIStatus("已暫停", "orange");
+            }
+        });
+
+        // 完成按鈕
+        btnComplete.addEventListener('click', () => {
+            if (html5QrcodeScanner && isScanning) {
+                html5QrcodeScanner.stop().then(() => {
+                    isScanning = false;
+                    isPaused = false;
+                    updateButtonsState("completed");
+                    updateUIStatus("掃描完成，請下載報表", "green");
+                    // 隱藏鏡頭區域
+                    document.getElementById('reader-container').style.display = 'none';
+                }).catch((err) => {
+                    console.log("停止失敗", err);
+                });
+            }
+        });
+
+        // **核心功能：Excel 匯出**
+        btnDownload.addEventListener('click', () => {
+            if (scannedData.size === 0) {
+                alert("目前沒有任何掃描數據！");
+                return;
+            }
+
+            let filename = document.getElementById('filename-input').value || "盤點結果";
+            
+            // 1. 準備數據：將 Map 轉換為二維陣列 (Array of Arrays)
+            // 加入標題列
+            const ws_data = [
+                ["條碼 (EAN-13)", "數量"] 
+            ];
+            // 加入數據列
+            scannedData.forEach((qty, barcode) => {
+                ws_data.push([barcode, qty]);
+            });
+
+            // 2. 創建工作表 (Worksheet)
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+            // 3. 創建工作簿 (Workbook) 並加入工作表
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "掃描數據");
+
+            // 4. 下載檔案
+            XLSX.writeFile(wb, `${filename}.xlsx`);
+        });
+
+
+        // === 輔助函數 ===
+
+        // 更新按鈕顯示狀態
+        function updateButtonsState(state) {
+            if (state === "scanning") {
+                btnStart.style.display = "none";
+                btnPause.style.display = "inline-block";
+                btnComplete.style.display = "inline-block";
+            } else if (state === "paused") {
+                btnStart.innerText = "繼續掃描";
+                btnStart.style.display = "inline-block";
+                btnPause.style.display = "none";
+                btnComplete.style.display = "inline-block";
+            } else if (state === "completed") {
+                btnStart.innerText = "重新開始新的盤點";
+                btnStart.style.display = "inline-block";
+                btnPause.style.display = "none";
+                btnComplete.style.display = "none";
+            }
+        }
+
+        // 更新狀態文字顏色
+        function updateUIStatus(text, color) {
+            statusMsg.innerText = text;
+            statusMsg.style.color = color || "black";
+        }
+
+        // 渲染畫面上的清單
+        function renderScanList() {
+            scanList.innerHTML = "";
+            if (scannedData.size === 0) {
+                scanList.innerHTML = "<p>尚未掃描任何條碼</p>";
+                return;
+            }
+            // 反向遍歷 Map 以便最新的顯示在上面 (需要先轉成 Array)
+            Array.from(scannedData).reverse().forEach(([code, qty]) => {
+                let div = document.createElement('div');
+                div.className = 'scan-item';
+                div.innerHTML = `<span class="item-code">${code}</span><span class="item-qty">x ${qty}</span>`;
+                scanList.appendChild(div);
+            });
+        }
 
     </script>
 </body>
