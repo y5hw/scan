@@ -1,0 +1,329 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.3">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="zh-TW"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;條碼盤點系統&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>body { padding: 20px; font-family: "Microsoft JhengHei", sans-serif; background-color: #f8f9fa; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.container { max-width: 800px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* 掃描區域樣式 */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>#reader { width: 100%; min-height: 300px; background: #000; margin-bottom: 15px; border-radius: 5px; position: relative;}</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* 狀態列 */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>#status-bar { font-weight: bold; margin-bottom: 10px; text-align: center; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.status-idle { color: #6c757d; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.status-scanning { color: #198754; animation: blink 1.5s infinite; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.status-paused { color: #ffc107; }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>@keyframes blink { 50% { opacity: 0.5; } }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* 表格樣式 */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.count-badge { font-size: 1.1em; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.last-scanned { background-color: #e8f5e9 !important; transition: background-color 1s; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;div class="container"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h3 class="text-center mb-3"&gt;條碼掃描計數器&lt;/h3&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="status-bar" class="status-idle"&gt;目前狀態：待機中&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="reader"&gt;&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="error-msg" class="alert alert-danger d-none"&gt;&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="row g-2 mb-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="col-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="btn-start" class="btn btn-success w-100 py-3" onclick="startScanning()"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;i class="bi bi-play-fill"&gt;&lt;/i&gt; 開始掃描</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="col-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="btn-pause" class="btn btn-warning w-100 py-3 text-white" onclick="pauseScanning()" disabled&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;i class="bi bi-pause-fill"&gt;&lt;/i&gt; 暫停</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="col-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="btn-finish" class="btn btn-primary w-100 py-3" onclick="finishAndExport()" disabled&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;i class="bi bi-file-earmark-excel"&gt;&lt;/i&gt; 完成並匯出</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;hr&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="d-flex justify-content-between align-items-center mb-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h4&gt;掃描清單 (&lt;span id="total-count"&gt;0&lt;/span&gt; 項)&lt;/h4&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="btn btn-sm btn-outline-danger" onclick="clearData()"&gt;清空表格&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;table class="table table-bordered table-hover"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;thead class="table-dark"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th&gt;條碼內容 (Barcode)&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;th style="width: 100px;"&gt;數量&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;tbody id="table-body"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;tr&gt;&lt;td colspan="2" class="text-center text-muted"&gt;尚未掃描任何條碼&lt;/td&gt;&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/table&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script src="https://unpkg.com/html5-qrcode" type="text/javascript"&gt;&lt;/script&gt;</p>
+<p class="p1">&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"&gt;&lt;/script&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 變數宣告 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let html5QrCode;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let scanData = {}; // 格式: { "barcode1": 5, "barcode2": 3 }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let lastScannedCode = null;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let lastScanTime = 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let isScanning = false;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 初始化 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>window.onload = function() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 建立掃描器實例 (使用 verbose=false 減少 log)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>html5QrCode = new Html5Qrcode("reader");</p>
+<p class="p1"><span class="Apple-converted-space">        </span>renderTable();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 核心功能：開始掃描 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function startScanning() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const errorMsgDiv = document.getElementById('error-msg');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>errorMsgDiv.classList.add('d-none'); // 隱藏錯誤訊息</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 設定掃描參數</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 嘗試啟動主鏡頭 (facingMode: "environment")</p>
+<p class="p1"><span class="Apple-converted-space">        </span>html5QrCode.start(</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ facingMode: "environment" },<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>config,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>onScanSuccess,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>onScanFailure</p>
+<p class="p1"><span class="Apple-converted-space">        </span>).then(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>isScanning = true;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>updateUIState("scanning");</p>
+<p class="p1"><span class="Apple-converted-space">            </span>console.log("掃描器已啟動");</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}).catch(err =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>console.error("啟動失敗", err);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>errorMsgDiv.innerText = "無法啟動相機，請確認瀏覽器權限或使用 HTTPS 連線。";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>errorMsgDiv.classList.remove('d-none');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 核心功能：暫停掃描 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function pauseScanning() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (isScanning) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>html5QrCode.stop().then(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>isScanning = false;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>updateUIState("paused");</p>
+<p class="p1"><span class="Apple-converted-space">                </span>console.log("掃描已暫停");</p>
+<p class="p1"><span class="Apple-converted-space">                </span>document.getElementById('reader').innerHTML = ""; // 清除畫面</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}).catch(err =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>console.log("暫停失敗", err);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 核心功能：掃描成功回呼 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function onScanSuccess(decodedText, decodedResult) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const currentTime = new Date().getTime();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 防重複機制 (2秒內掃到同一個不計數)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (decodedText === lastScannedCode &amp;&amp; (currentTime - lastScanTime &lt; 2000)) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 1. 播放音效</p>
+<p class="p1"><span class="Apple-converted-space">        </span>playBeep();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 2. 更新邏輯</p>
+<p class="p1"><span class="Apple-converted-space">        </span>lastScannedCode = decodedText;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>lastScanTime = currentTime;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (scanData[decodedText]) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>scanData[decodedText]++;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>scanData[decodedText] = 1;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 3. 更新介面</p>
+<p class="p1"><span class="Apple-converted-space">        </span>renderTable();</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 4. 視覺回饋 (閃爍一下表示成功)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const readerDiv = document.getElementById('reader');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>readerDiv.style.border = "5px solid #28a745";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>setTimeout(() =&gt; { readerDiv.style.border = "none"; }, 200);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 忽略掃描過程中的錯誤 (如正在對焦)</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function onScanFailure(error) {}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 核心功能：完成並匯出 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function finishAndExport() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 先暫停掃描</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (isScanning) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>pauseScanning();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (Object.keys(scanData).length === 0) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>alert("目前沒有任何資料，無法建立表格。");</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 讓使用者輸入檔名</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let fileName = prompt("請輸入檔案名稱：", generateDefaultFileName());</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (fileName) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>// 確保檔名有 .xlsx 後綴</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (!fileName.endsWith('.xlsx')) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>fileName += '.xlsx';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>exportToExcel(fileName);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 輔助功能：產生 Excel ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function exportToExcel(fileName) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const dataForExcel = [];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 將物件轉為陣列</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (const [code, qty] of Object.entries(scanData)) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>dataForExcel.push({ "條碼內容": code, "數量": qty });</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const wb = XLSX.utils.book_new();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const ws = XLSX.utils.json_to_sheet(dataForExcel);</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 設定欄寬 (美觀)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const wscols = [ {wch:30}, {wch:10} ];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>ws['!cols'] = wscols;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>XLSX.utils.book_append_sheet(wb, ws, "盤點結果");</p>
+<p class="p1"><span class="Apple-converted-space">        </span>XLSX.writeFile(wb, fileName);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 輔助功能：更新表格 UI ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function renderTable() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const tbody = document.getElementById('table-body');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const totalCountSpan = document.getElementById('total-count');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>tbody.innerHTML = "";</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const entries = Object.entries(scanData);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>totalCountSpan.innerText = entries.length;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (entries.length === 0) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>tbody.innerHTML = '&lt;tr&gt;&lt;td colspan="2" class="text-center text-muted"&gt;尚未掃描任何條碼&lt;/td&gt;&lt;/tr&gt;';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 反轉陣列，讓最新掃描的顯示在最上面</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 我們可以把最後掃描的那個特別標記出來</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const reversedEntries = [...entries].reverse();<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>reversedEntries.forEach(([code, qty]) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const isLastScanned = (code === lastScannedCode);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const rowClass = isLastScanned ? "last-scanned" : "";</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const row = `&lt;tr class="${rowClass}"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;td class="align-middle"&gt;${code}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;td&gt;&lt;span class="badge bg-primary count-badge"&gt;${qty}&lt;/span&gt;&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>&lt;/tr&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>tbody.innerHTML += row;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 輔助功能：狀態管理 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function updateUIState(state) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const btnStart = document.getElementById('btn-start');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const btnPause = document.getElementById('btn-pause');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const btnFinish = document.getElementById('btn-finish');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const statusBar = document.getElementById('status-bar');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (state === "scanning") {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btnStart.disabled = true;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btnPause.disabled = false;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btnFinish.disabled = false;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusBar.innerText = "🟢 正在掃描中... (請對準條碼)";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusBar.className = "status-scanning";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else if (state === "paused") {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btnStart.disabled = false;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btnStart.innerHTML = '&lt;i class="bi bi-play-fill"&gt;&lt;/i&gt; 繼續掃描';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btnPause.disabled = true;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>btnFinish.disabled = false;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusBar.innerText = "🟡 已暫停";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusBar.className = "status-paused";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>// idle</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusBar.innerText = "⚪ 待機中";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusBar.className = "status-idle";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 輔助功能：清空資料 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function clearData() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(confirm("確定要清空目前所有列表資料嗎？")) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>scanData = {};</p>
+<p class="p1"><span class="Apple-converted-space">            </span>lastScannedCode = null;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>renderTable();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// --- 輔助功能：音效 ---</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function playBeep() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const audioCtx = new (window.AudioContext || window.webkitAudioContext)();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const oscillator = audioCtx.createOscillator();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const gainNode = audioCtx.createGain();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>oscillator.connect(gainNode);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gainNode.connect(audioCtx.destination);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>oscillator.type = 'sine';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); // 較高頻清脆聲音</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>oscillator.start();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>oscillator.stop(audioCtx.currentTime + 0.1);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} catch(e) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>console.log("Audio play failed"); // 部分瀏覽器限制自動播放</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 產生預設檔名</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function generateDefaultFileName() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const date = new Date();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const mm =String(date.getMonth() + 1).padStart(2, '0');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const dd = String(date.getDate()).padStart(2, '0');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const hh = String(date.getHours()).padStart(2, '0');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const min = String(date.getMinutes()).padStart(2, '0');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return `盤點表_${mm}${dd}_${hh}${min}.xlsx`;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;/script&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
